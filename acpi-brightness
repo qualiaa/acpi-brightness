@@ -1,0 +1,188 @@
+#!/usr/bin/bash
+
+set -eu
+
+readonly progname=$(basename $0)
+readonly backlight=/sys/class/backlight/intel_backlight
+
+readonly brightness_file=$backlight/brightness
+max_brightness=
+
+
+function round() {
+    bc -l <<< "$1" | cut -d. -f1
+}
+
+function print_help() {
+    echo "usage: $progname [-h|--help] [[--time|-t TIME [--block|-b]] [--COND] [+-]TARGET]"
+    cat - <<HELP
+
+Backlight brightness controls using ACPI.
+
+  -h, --help         Display this help message
+
+  -t, --time TIME    Fade brightness over TIME seconds (positive decimal)
+  -b, --block        With --time, prevent other brightness changes until complete
+
+      --COND         Only change if increasing or decreasing brightness
+                     COND is "inc" or "dec"
+
+TARGET is an integer % [0,100]. If TARGET is preceeded by + or -, the change is
+relative to the current brightness; otherwise it is interpreted as an absolute
+brightness setting. With no arguments, report current brightness %.
+
+Current ACPI path is \`$backlight\`
+Please report bugs to <https://github.com/qualiaa/acpi-brightness/issues>"
+HELP
+}
+
+function get_brightness_raw() {
+    cat "$brightness_file"
+}
+function set_brightness_raw() {
+    echo $1 > "$brightness_file"
+}
+function get_brightness() {
+    local current_value=$(get_brightness_raw)
+    round "100 * ($current_value / $max_brightness)"
+}
+function set_brightness() {
+    target_value=$(round "$max_brightness*$1/100")
+    set_brightness_raw $target_value
+}
+
+function invalid_argument() {
+    echo "$progname: Invalid argument $1" >&2
+    print_help
+    exit 1
+}
+
+function valid_number() {
+    local regex="^[0-9]+$"
+    [[ "$1" =~ $regex ]]
+}
+
+function valid_percentage() {
+    local regex="^(100|[0-9]?[0-9])$"
+    [[ "$1" =~ $regex ]]
+}
+
+function interpolate() {
+    local target_value=$(round "$max_brightness*$target/100")
+    local current_value=$(get_brightness_raw)
+
+    local steps=$(bc <<<"20*$time")
+    local interval=$(bc -l <<< "($target_value - $current_value)/$steps")
+
+    ! rm "${TMPDIR:-/tmp}/brightness."* 2>/dev/null
+    lockfile=$(mktemp --tmpdir brightness.XXXX)
+    #echo $lockfile
+    i=0
+    while [ $i -lt $steps ]; do
+        [ -f "$lockfile" ] ||  exit
+        new_value=$(bc -l <<< "$current_value + $interval")
+        set_brightness_raw $(round $new_value)
+        current_value=$new_value
+        sleep 0.1
+        (( ++i ))
+    done
+    rm "$lockfile"
+}
+
+function change_brightness() {
+    case ${mode} in
+        [+-])
+            brightness=$(get_brightness)
+            target=$(($brightness $mode $target))
+            [ $target -gt 0 ] || target=0
+            [ $target -lt 100 ] || target=100
+    esac
+
+    local brightness=$(get_brightness)
+    [ $target -ne $brightness ] || exit
+
+    case "${condition:-}" in
+        inc)
+            [ $target -gt $brightness ] || exit 0 ;;
+        dec)
+            [ $target -lt $brightness ] || exit 0
+    esac
+
+    if [[ ${time:-} > 0 ]]; then
+        ( interpolate ) &
+        disown %1
+    else
+        set_brightness $target
+    fi
+}
+
+function init_backlight() {
+    if [ ! -e $backlight ]; then 
+        exec >&2
+        printf "$(basename $progname): could not find backlight
+        file\n\n\t$backlight\n\n"
+        local possibles=$(echo /sys/class/backlight/*)
+        if [ -n $possibles ]; then
+            printf "Try using one of the following:\n\n"
+            printf "\t%s\n" $possibles
+        else
+            echo "No backlight files could be found."
+        fi
+        exit 1
+    fi
+
+    if [ ! -w $brightness_file ]; then
+        exec >&2
+        printf "$progname: no write permission for file \n\n\t$brightness_file\n\n"
+
+        printf "Consider adding yourself to the video group and adding the following udev rule:\n\n\t"
+        echo 'SUBSYSTEM=="backlight", RUN+="/usr/bin/chgrp video /sys/class/backlight/%k/brightness", RUN+="/usr/bin/chmod 660 /sys/class/backlight/%k/brightness"'
+
+        exit 1
+    fi
+
+    readonly max_brightness=$(cat $backlight/max_brightness)
+}
+
+if [ $# -eq 0 ]; then
+    init_backlight
+    get_brightness
+    exit
+fi
+
+#eval set -- $(getopt -a --longoptions set,dec,inc:,block --name "$progname" -- b "$@")
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --dec|--inc)
+            condition="${1#--}"
+            ;;
+        --block|-b)
+            block="true" ;;
+        --time|-t)
+            shift
+            valid_number "$1" || invalid_argument "for [time]: $1"
+            time=$1
+            ;;
+        [-+][0-9]*)
+            mode="${1:0:1}"
+            target=${1:1}
+            valid_percentage "$target" || invalid_argument "$1"
+            ;;
+        [0-9]*)
+            mode="="
+            target="$1"
+            valid_percentage "$target" || invalid_argument "$1"
+            ;;
+        -h|?-help)
+            print_help
+            exit
+            ;;
+        *)
+            invalid_argument "$1"
+    esac
+    shift
+done
+
+[ -n $target ] || invalid_argument "- target value not provided"
+init_backlight
+change_brightness
