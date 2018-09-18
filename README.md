@@ -71,12 +71,16 @@ Set brightness to 40%, ignoring previous `--block`ing invocations
 
 * **Give `video` group write-access to ACPI brightness file**
 
-  Create the following udev rule
+  The following udev rule will do this at startup:
 
-      $ echo 'SUBSYSTEM=="backlight", RUN+="/usr/bin/chgrp video /sys/class/backlight/%k/brightness", RUN+="/usr/bin/chmod 660 /sys/class/backlight/%k/brightness"' > /etc/udev/rules.d/60-acpi-backlight.rules
+      SUBSYSTEM=="backlight", RUN+="/usr/bin/chgrp video /sys/class/backlight/%k/brightness", RUN+="/usr/bin/chmod 660 /sys/class/backlight/%k/brightness"
 
-* Place `acpi-brightness` on your path
-* Test everything is working
+  *e.g.*
+
+      $ sudo tee /etc/udev/rules.d/60-acpi-backlight.rules <<< 'SUBSYSTEM=="backlight", RUN+="/usr/bin/chgrp video /sys/class/backlight/%k/brightness", RUN+="/usr/bin/chmod 660 /sys/class/backlight/%k/brightness"'
+
+* **Place `acpi-brightness` on your `$PATH`**
+* **Test everything is working**
 
       $ brightness 100
       $ brightness
