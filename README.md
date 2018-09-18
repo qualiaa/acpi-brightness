@@ -14,7 +14,8 @@ With no argument, report current brightness as % of maximum.
 
 With `TARGET` %, alter brightness. If `--time` is set, fade over `TIME` seconds.
 If `--block` is also specified, subsequent attempts to change brightness will fail
-until this invocation is finished.
+until this invocation is finished. `--force` can be used to ignore previously
+`--blocking` invocations.
 
 `COND` is either `inc`[rement] or `dec`[rement] -- if decrement is specified,
 but `TARGET` is brighter than the current brightness, there will be no change.
