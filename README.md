@@ -1,7 +1,8 @@
 # ACPI Brightness
 
 A small script with minimal requirements for interacting with ACPI backlights
-via *sysfs*. Interface uses percentages. Supports linear fading between values,
+via *sysfs*, intended as a stand-in for `xbacklight` on systems which it does
+not support. Interface uses percentages. Supports linear fading between values,
 relative brightness changes, and only-decrease and only-increase options.
 
 ## Usage
@@ -54,7 +55,7 @@ but `TARGET` is brighter than the current brightness, there will be no change.
 * Set brightness to 100% over 2 seocnds, and prevent any brightness changes until
 complete
 
-      $ acpi-brightness -block -t 2 100
+      $ acpi-brightness --block -t 2 100
 
 * Set brightness to 40%, ignoring previous `--block`ing invocations
 
@@ -76,7 +77,7 @@ complete
 
       SUBSYSTEM=="backlight", RUN+="/usr/bin/chgrp video /sys/class/backlight/%k/brightness", RUN+="/usr/bin/chmod 660 /sys/class/backlight/%k/brightness"
 
-  *e.g.*
+  *e.g.* with the following command:
 
       $ sudo tee /etc/udev/rules.d/60-acpi-backlight.rules <<< 'SUBSYSTEM=="backlight", RUN+="/usr/bin/chgrp video /sys/class/backlight/%k/brightness", RUN+="/usr/bin/chmod 660 /sys/class/backlight/%k/brightness"'
 
