@@ -33,6 +33,7 @@ Backlight brightness controls using ACPI.
 
   -t, --time TIME    Fade brightness over TIME seconds (positive decimal)
   -b, --block        With --time, prevent other brightness changes until complete
+  -f, --force        Stop previous blocking invocations before continuing
 
       --COND         Only change if increasing or decreasing brightness
                      COND is "inc" or "dec"
