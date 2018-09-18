@@ -16,9 +16,11 @@ block=
 force=
 
 
+function maths() {
+    awk "BEGIN { print $1 }"
+}
 function round() {
-    bc -l <<< "$1" |
-        awk '{x = int($1); if($1 - x < 0.5) {print x} else {print x+1}}'
+    maths "$1" | awk -F. '{if($2 < 5) {print $1} else {print $1+1}}'
 }
 
 function print_help() {
@@ -106,8 +108,8 @@ function interpolate() {
     local target_value=$(round "$max_brightness*$target/100")
     local current_value=$(get_brightness_raw)
 
-    local steps=$(bc <<<"20*$time")
-    local interval=$(bc -l <<< "($target_value - $current_value)/$steps")
+    local steps=$(maths "20 * $time")
+    local interval=$(maths "($target_value - $current_value)/$steps")
 
     lockfile=$(create_lock)
 
@@ -118,7 +120,7 @@ function interpolate() {
         # if lockfile not present, quit
         [ -f "$lockfile" ] ||  exit
 
-        new_value=$(bc -l <<< "$current_value + $interval")
+        new_value=$(maths "$current_value + $interval")
         set_brightness_raw $(round $new_value)
         current_value=$new_value
         sleep 0.1
@@ -131,7 +133,7 @@ function change_brightness() {
     case ${mode} in
         [+-])
             brightness=$(get_brightness)
-            target=$(($brightness $mode $target))
+            target=$((brightness $mode target))
             [ $target -gt 0 ] || target=0
             [ $target -lt 100 ] || target=100
     esac
