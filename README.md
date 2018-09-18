@@ -83,11 +83,11 @@ complete
 * **Place `acpi-brightness` on your `$PATH`**
 * **Test everything is working**
 
-      $ brightness 100
-      $ brightness
+      $ acpi-brightness 100
+      $ acpi-brightness
       100
-      $ brightness 30
-      $ brightness
+      $ acpi-brightness 30
+      $ acpi-brightness
       30
 
 ## Related Projects
