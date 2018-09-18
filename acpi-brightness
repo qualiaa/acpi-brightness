@@ -10,6 +10,7 @@ max_brightness=
 
 readonly lockfile_name=brightness
 readonly block_text="block"
+readonly delete_text="delete"
 
 block=
 force=
@@ -86,12 +87,16 @@ function check_lock() {
 }
 
 function clear_lock() {
-    local lockfile="${TMPDIR:-/tmp}/${lockfile_name}"
-    if grep -q "$block_text" "$lockfile".* && [ -z $force ]; then
-        echo "Cannot remove block"
+    local lockfile=$(echo "${TMPDIR:-/tmp}/${lockfile_name}".*)
+    if grep -q "$block_text" "$lockfile" && [ -z $force ]; then
         return 1
     fi
-    # TODO: send message to file to delete, wait
+
+    echo "$delete_text" >> "$lockfile"
+    for i in seq 3; do
+        [ ! -f "$lockfile" ] && return 0
+        sleep 0.01
+    done
     ! rm "$lockfile".* 2>/dev/null
     return 0
 }
@@ -107,7 +112,11 @@ function interpolate() {
 
     i=0
     while [ $i -lt $steps ]; do
+        # if $delete_text present, remove lockfile.
+        grep -q "$delete_text" "$lockfile" && rm "$lockfile"
+        # if lockfile not present, quit
         [ -f "$lockfile" ] ||  exit
+
         new_value=$(bc -l <<< "$current_value + $interval")
         set_brightness_raw $(round $new_value)
         current_value=$new_value
@@ -148,7 +157,7 @@ function change_brightness() {
 }
 
 function init_backlight() {
-    if [ ! -e $backlight ]; then 
+    if [ ! -e $backlight ]; then
         exec >&2
         printf "$(basename $progname): could not find backlight
         file\n\n\t$backlight\n\n"
