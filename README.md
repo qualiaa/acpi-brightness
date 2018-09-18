@@ -89,3 +89,8 @@ complete
       $ brightness 30
       $ brightness
       30
+
+## Related Projects
+
+Hook for [redshift](https://github.com/jonls/redshift) to decrease brightness
+throughout the day: [redshift-hooks](https://github.com/qualiaa/redshift-hooks)
