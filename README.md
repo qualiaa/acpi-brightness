@@ -94,3 +94,7 @@ complete
 
 Hook for [redshift](https://github.com/jonls/redshift) to decrease brightness
 throughout the day: [redshift-hooks](https://github.com/qualiaa/redshift-hooks)
+
+## Licence
+
+`acpi-brightness` is licensed under the GNU General Public Licence v3.0.
