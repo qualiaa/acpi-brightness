@@ -17,7 +17,8 @@ force=
 
 
 function round() {
-    bc -l <<< "$1" | cut -d. -f1
+    bc -l <<< "$1" |
+        awk '{x = int($1); if($1 - x < 0.5) {print x} else {print x+1}}'
 }
 
 function print_help() {
