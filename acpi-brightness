@@ -8,6 +8,12 @@ readonly backlight=/sys/class/backlight/intel_backlight
 readonly brightness_file=$backlight/brightness
 max_brightness=
 
+readonly lockfile_name=brightness
+readonly block_text="block"
+
+block=
+force=
+
 
 function round() {
     bc -l <<< "$1" | cut -d. -f1
@@ -67,6 +73,29 @@ function valid_percentage() {
     [[ "$1" =~ $regex ]]
 }
 
+function create_lock() {
+    lockfile=$(mktemp --tmpdir "${lockfile_name}.XXXX")
+
+    [ -n "$block" ] && echo "$block_text" > "$lockfile"
+    echo "$lockfile"
+}
+
+function check_lock() {
+    local lockfile="${TMPDIR:-/tmp}/${lockfile_name}"
+    [ -f "$lockfile".* ]
+}
+
+function clear_lock() {
+    local lockfile="${TMPDIR:-/tmp}/${lockfile_name}"
+    if grep -q "$block_text" "$lockfile".* && [ -z $force ]; then
+        echo "Cannot remove block"
+        return 1
+    fi
+    # TODO: send message to file to delete, wait
+    ! rm "$lockfile".* 2>/dev/null
+    return 0
+}
+
 function interpolate() {
     local target_value=$(round "$max_brightness*$target/100")
     local current_value=$(get_brightness_raw)
@@ -74,9 +103,8 @@ function interpolate() {
     local steps=$(bc <<<"20*$time")
     local interval=$(bc -l <<< "($target_value - $current_value)/$steps")
 
-    ! rm "${TMPDIR:-/tmp}/brightness."* 2>/dev/null
-    lockfile=$(mktemp --tmpdir brightness.XXXX)
-    #echo $lockfile
+    lockfile=$(create_lock)
+
     i=0
     while [ $i -lt $steps ]; do
         [ -f "$lockfile" ] ||  exit
@@ -107,6 +135,10 @@ function change_brightness() {
         dec)
             [ $target -lt $brightness ] || exit 0
     esac
+
+    if check_lock; then
+        clear_lock || exit 1
+    fi
 
     if [[ ${time:-} > 0 ]]; then
         ( interpolate ) &
@@ -158,6 +190,8 @@ while [ $# -gt 0 ]; do
             ;;
         --block|-b)
             block="true" ;;
+        --force|-f)
+            force="true" ;;
         --time|-t)
             shift
             valid_number "$1" || invalid_argument "for [time]: $1"
