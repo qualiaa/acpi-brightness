@@ -29,35 +29,35 @@ but `TARGET` is brighter than the current brightness, there will be no change.
 
 ### Examples
 
-Get current brightness in %
+* Get current brightness in %
 
-    $ acpi-brightness 
-    100
+      $ acpi-brightness 
+      100
 
-Set brightness to 40%
+* Set brightness to 40%
 
-    $ acpi-brightness 40
+      $ acpi-brightness 40
 
-Set brightness to 40% unless current brightness is lower than 40%
+* Set brightness to 40% unless current brightness is lower than 40%
 
-    $ acpi-brightness --dec 40
+      $ acpi-brightness --dec 40
 
-Decrease brightness by 10pp
+* Decrease brightness by 10pp
 
-    $ acpi-brightness -20
+      $ acpi-brightness -20
 
-Increase brightness by 20pp over 2.5 seconds
+* Increase brightness by 20pp over 2.5 seconds
 
-    $ acpi-brightness -t 2.5 +20
+      $ acpi-brightness -t 2.5 +20
 
-Set brightness to 100% over 2 seocnds, and prevent any brightness changes until
+* Set brightness to 100% over 2 seocnds, and prevent any brightness changes until
 complete
 
-    $ acpi-brightness -block -t 2 100
+      $ acpi-brightness -block -t 2 100
 
-Set brightness to 40%, ignoring previous `--block`ing invocations
+* Set brightness to 40%, ignoring previous `--block`ing invocations
 
-    $ acpi-brightness -f 40
+      $ acpi-brightness -f 40
 
 ## Dependencies
 
