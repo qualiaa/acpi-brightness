@@ -1,4 +1,4 @@
-#!/usr/bin/sh
+#!/usr/bin/bash
 
 set -eu
 
@@ -16,14 +16,14 @@ block=
 force=
 
 
-function maths() {
+maths() {
     awk "BEGIN { print $1 }"
 }
-function round() {
+round() {
     maths "$1" | awk -F. '{if($2 < 5) {print $1} else {print $1+1}}'
 }
 
-function print_help() {
+print_help() {
     echo "usage: $progname [-h|--help] [[--time|-t TIME [--block|-b]] [--COND] [+-]TARGET]"
     cat - <<HELP
 
@@ -47,65 +47,82 @@ Please report bugs to <https://github.com/qualiaa/acpi-brightness/issues>"
 HELP
 }
 
-function get_brightness_raw() {
+get_brightness_raw() {
     cat "$brightness_file"
 }
-function set_brightness_raw() {
+set_brightness_raw() {
     echo $1 > "$brightness_file"
 }
-function get_brightness() {
+get_brightness() {
     local current_value=$(get_brightness_raw)
     round "100 * ($current_value / $max_brightness)"
 }
-function set_brightness() {
+set_brightness() {
     target_value=$(round "$max_brightness*$1/100")
     set_brightness_raw $target_value
 }
 
-function invalid_argument() {
+invalid_argument() {
     echo "$progname: Invalid argument $1" >&2
     print_help
     exit 1
 }
 
-function valid_number() {
-    local regex="^[0-9]+$"
+valid_number() {
+    local regex="^[0-9.]+$"
     [[ "$1" =~ $regex ]]
 }
 
-function valid_percentage() {
+valid_percentage() {
     local regex="^(100|[0-9]?[0-9])$"
     [[ "$1" =~ $regex ]]
 }
 
-function create_lock() {
+create_lock() {
     lockfile=$(mktemp --tmpdir "${lockfile_name}.XXXX")
 
     [ -n "$block" ] && echo "$block_text" > "$lockfile"
     echo "$lockfile"
 }
 
-function check_lock() {
+check_lock() {
     local lockfile="${TMPDIR:-/tmp}/${lockfile_name}"
-    [ -f "$lockfile".* ]
+    local locked=
+    for x in "$lockfile".*; do
+        if [ -f "$x" ]; then
+            locked=true
+        fi
+    done
+    [ -n "$locked" ]
 }
 
-function clear_lock() {
-    local lockfile=$(echo "${TMPDIR:-/tmp}/${lockfile_name}".*)
-    if grep -q "$block_text" "$lockfile" && [ -z $force ]; then
-        return 1
-    fi
+clear_lock() {
+    local lockfiles=$(find "${TMPDIR:-/tmp}" -name "${lockfile_name}.*")
 
-    echo "$delete_text" >> "$lockfile"
+    for lock in $lockfiles; do
+        if grep -q "$block_text" "$lock" && [ -z $force ]; then
+            return 1
+        fi
+    done
+
+    for lock in $lockfiles; do
+        echo "$delete_text" >> "$lock"
+    done
+
     for i in seq 3; do
-        [ ! -f "$lockfile" ] && return 0
+        remaining=
+        for lock in $lockfiles; do
+            [ -f "$lock" ] && remaining=true
+        done
+        [ -z "$remaining" ] && break
         sleep 0.01
     done
-    ! rm "$lockfile".* 2>/dev/null
+
+    ! rm $lockfiles 2>/dev/null
     return 0
 }
 
-function interpolate() {
+interpolate() {
     local target_value=$(round "$max_brightness*$target/100")
     local current_value=$(get_brightness_raw)
 
@@ -130,7 +147,7 @@ function interpolate() {
     rm "$lockfile"
 }
 
-function change_brightness() {
+change_brightness() {
     case ${mode} in
         [+-])
             brightness=$(get_brightness)
@@ -160,13 +177,13 @@ function change_brightness() {
     fi
 }
 
-function init_backlight() {
+init_backlight() {
     if [ ! -e $backlight ]; then
         exec >&2
         printf "$(basename $progname): could not find backlight
         file\n\n\t$backlight\n\n"
         local possibles=$(echo /sys/class/backlight/*)
-        if [ -n $possibles ]; then
+        if [ -n "$possibles" ]; then
             printf "Try using one of the following:\n\n"
             printf "\t%s\n" $possibles
         else
